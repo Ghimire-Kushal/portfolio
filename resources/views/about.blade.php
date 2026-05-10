@@ -8,7 +8,7 @@
 <body>
     
     @extends('layouts.app')
-
+{{-- fix  --}}
 @section('content')
 <div class="row align-items-center">
     <div class="col-md-4 text-center">
