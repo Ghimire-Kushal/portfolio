@@ -42,9 +42,11 @@ class ProjectController extends Controller
         return view('admin.projects.create');
     }
 
+    /* ================= STORE PROJECT ================= */
+
     public function store(Request $request)
     {
-        // Validate
+        // Validation
         $validated = $request->validate([
             'title' => 'required|string|max:255|unique:projects,title',
             'description' => 'required|string',
@@ -60,25 +62,28 @@ class ProjectController extends Controller
 
         $validated['slug'] = $slug;
 
-        // Upload image to Cloudinary
-        try {
+        // Upload image safely
+        if ($request->hasFile('image')) {
 
-            $upload = Cloudinary::upload(
-                $request->file('image')->getRealPath(),
-                [
-                    'folder' => 'projects'
-                ]
-            );
+            try {
 
-            $validated['image'] = $upload->getSecurePath();
+                $uploadedFileUrl = Cloudinary::upload(
+                    $request->file('image')->getRealPath(),
+                    [
+                        'folder' => 'projects'
+                    ]
+                )->getSecurePath();
 
-        } catch (\Exception $e) {
+                $validated['image'] = $uploadedFileUrl;
 
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'image' => 'Image upload failed: ' . $e->getMessage()
-                ]);
+            } catch (\Exception $e) {
+
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'image' => 'Cloudinary upload failed.'
+                    ]);
+            }
         }
 
         // Save project
@@ -89,14 +94,18 @@ class ProjectController extends Controller
             ->with('success', 'Project created successfully!');
     }
 
+    /* ================= EDIT ================= */
+
     public function edit(Project $project)
     {
         return view('admin.projects.edit', compact('project'));
     }
 
+    /* ================= UPDATE ================= */
+
     public function update(Request $request, Project $project)
     {
-        // Validate
+        // Validation
         $validated = $request->validate([
             'title' => 'required|string|max:255|unique:projects,title,' . $project->id,
             'description' => 'required|string',
@@ -119,26 +128,26 @@ class ProjectController extends Controller
             $validated['slug'] = $slug;
         }
 
-        // Update image if uploaded
+        // Update image
         if ($request->hasFile('image')) {
 
             try {
 
-                $upload = Cloudinary::upload(
+                $uploadedFileUrl = Cloudinary::upload(
                     $request->file('image')->getRealPath(),
                     [
                         'folder' => 'projects'
                     ]
-                );
+                )->getSecurePath();
 
-                $validated['image'] = $upload->getSecurePath();
+                $validated['image'] = $uploadedFileUrl;
 
             } catch (\Exception $e) {
 
                 return back()
                     ->withInput()
                     ->withErrors([
-                        'image' => 'Image update failed: ' . $e->getMessage()
+                        'image' => 'Image upload failed.'
                     ]);
             }
         }
@@ -150,6 +159,8 @@ class ProjectController extends Controller
             ->route('admin.projects.index')
             ->with('success', 'Project updated successfully!');
     }
+
+    /* ================= DELETE ================= */
 
     public function destroy(Project $project)
     {
