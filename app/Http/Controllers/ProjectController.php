@@ -14,6 +14,7 @@ class ProjectController extends Controller
     public function index()
     {
         $projects = Project::latest()->paginate(9);
+
         return view('projects.index', compact('projects'));
     }
 
@@ -32,6 +33,7 @@ class ProjectController extends Controller
     public function adminIndex()
     {
         $projects = Project::latest()->paginate(10);
+
         return view('admin.projects.index', compact('projects'));
     }
 
@@ -42,35 +44,44 @@ class ProjectController extends Controller
 
     public function store(Request $request)
     {
+        // Validate
         $validated = $request->validate([
             'title' => 'required|string|max:255|unique:projects,title',
             'description' => 'required|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'required|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        // ✅ SLUG
+        // Generate slug
         $slug = Str::slug($validated['title']);
+
         if (Project::where('slug', $slug)->exists()) {
             $slug .= '-' . time();
         }
+
         $validated['slug'] = $slug;
 
-        // ✅ SAFE CLOUDINARY UPLOAD
-        if ($request->hasFile('image')) {
-            try {
-                $upload = Cloudinary::upload(
-                    $request->file('image')->getRealPath()
-                );
+        // Upload image to Cloudinary
+        try {
 
-                if ($upload) {
-                    $validated['image'] = $upload->getSecurePath();
-                }
-            } catch (\Exception $e) {
-                // prevent crash
-                return back()->with('error', 'Image upload failed: ' . $e->getMessage());
-            }
+            $upload = Cloudinary::upload(
+                $request->file('image')->getRealPath(),
+                [
+                    'folder' => 'projects'
+                ]
+            );
+
+            $validated['image'] = $upload->getSecurePath();
+
+        } catch (\Exception $e) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'image' => 'Image upload failed: ' . $e->getMessage()
+                ]);
         }
 
+        // Save project
         Project::create($validated);
 
         return redirect()
@@ -85,40 +96,54 @@ class ProjectController extends Controller
 
     public function update(Request $request, Project $project)
     {
+        // Validate
         $validated = $request->validate([
             'title' => 'required|string|max:255|unique:projects,title,' . $project->id,
             'description' => 'required|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        // ✅ SLUG UPDATE
+        // Update slug if title changed
         if ($project->title !== $validated['title']) {
+
             $slug = Str::slug($validated['title']);
 
-            if (Project::where('slug', $slug)
-                ->where('id', '!=', $project->id)
-                ->exists()) {
+            if (
+                Project::where('slug', $slug)
+                    ->where('id', '!=', $project->id)
+                    ->exists()
+            ) {
                 $slug .= '-' . time();
             }
 
             $validated['slug'] = $slug;
         }
 
-        // ✅ SAFE IMAGE UPDATE
+        // Update image if uploaded
         if ($request->hasFile('image')) {
+
             try {
+
                 $upload = Cloudinary::upload(
-                    $request->file('image')->getRealPath()
+                    $request->file('image')->getRealPath(),
+                    [
+                        'folder' => 'projects'
+                    ]
                 );
 
-                if ($upload) {
-                    $validated['image'] = $upload->getSecurePath();
-                }
+                $validated['image'] = $upload->getSecurePath();
+
             } catch (\Exception $e) {
-                return back()->with('error', 'Image update failed: ' . $e->getMessage());
+
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'image' => 'Image update failed: ' . $e->getMessage()
+                    ]);
             }
         }
 
+        // Update project
         $project->update($validated);
 
         return redirect()
