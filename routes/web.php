@@ -93,9 +93,10 @@ Route::get('/dashboard', function () {
 
 /*
 |--------------------------------------------------------------------------
-| TEST CLOUDINARY ROUTE (REMOVE AFTER TESTING)
+| TEST CLOUDINARY ROUTE (REMOVE AFTER TESTING) test 
 |--------------------------------------------------------------------------
 */
+
 
 Route::get('/cloudinary-test', function () {
     try {
