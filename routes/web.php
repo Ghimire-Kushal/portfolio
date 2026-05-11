@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProjectController;
@@ -16,28 +17,23 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 |--------------------------------------------------------------------------
 */
 
-// Home
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// Contact Page
 Route::view('/contact', 'contact')->name('contact');
 
-// Contact Form Submit (rate limited)
 Route::post('/contact', [ContactController::class, 'store'])
     ->name('contact.store')
     ->middleware('throttle:3,1');
 
-// Projects (Public)
 Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
 Route::get('/projects/{project:slug}', [ProjectController::class, 'show'])->name('projects.show');
 
-// Resume Download
 Route::get('/download-resume', function () {
     $path = public_path('resume.pdf');
     abort_if(!file_exists($path), 404);
+
     return response()->download($path, 'Kushal-Ghimire-Resume.pdf');
 })->name('resume.download');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -47,7 +43,6 @@ Route::get('/download-resume', function () {
 
 Route::get('/kushal', [RegisteredUserController::class, 'create'])->name('kushal.register');
 Route::post('/kushal', [RegisteredUserController::class, 'store'])->name('kushal.store');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -63,7 +58,6 @@ Route::middleware('auth')->group(function () {
 
 });
 
-
 /*
 |--------------------------------------------------------------------------
 | Admin Routes
@@ -73,7 +67,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard', [AdminController::class, 'index']);
+    Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard.alt');
 
     Route::get('/projects', [ProjectController::class, 'adminIndex'])->name('projects.index');
 
@@ -84,8 +78,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
 
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
-});
 
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -97,6 +91,32 @@ Route::get('/dashboard', function () {
     return redirect()->route('home');
 });
 
+/*
+|--------------------------------------------------------------------------
+| TEST CLOUDINARY ROUTE (REMOVE AFTER TESTING)
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/cloudinary-test', function () {
+    try {
+        $upload = Cloudinary::upload(
+            'https://res.cloudinary.com/demo/image/upload/sample.jpg'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cloudinary is working ✅',
+            'url' => $upload->getSecurePath(),
+        ]);
+
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Cloudinary upload failed ❌',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -114,6 +134,5 @@ Route::get('/test-mail', function () {
 
     return "Mail Sent ✅";
 });
-
 
 require __DIR__.'/auth.php';
